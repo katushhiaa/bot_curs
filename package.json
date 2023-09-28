@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "@grammyjs/menu": "^1.2.1",
+    "grammy": "^1.18.1"
+  }
+}
