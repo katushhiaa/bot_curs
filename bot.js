@@ -31,7 +31,7 @@ const mainMenuKeyboard = {
 };
 
 const returnToMenuKeyboard = {
-  keyboard: [[{ text: "Повернутись у меню" }]],
+  keyboard: [[{ text: "Повернутись у головне меню" }]],
   resize_keyboard: true,
 };
 
@@ -115,7 +115,7 @@ bot.on("message", async (ctx) => {
     await nameSearch(ctx);
   } else if (messageText === "Список переглянутих фільмів") {
     await showWatchedList(ctx);
-  } else if (messageText === "Повернутись у меню") {
+  } else if (messageText === "Повернутись у головне меню") {
     await sendMainMenu(ctx);
   } else if (
     !isNaN(messageText) &&
