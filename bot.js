@@ -4,9 +4,14 @@ const { Menu } = require("@grammyjs/menu");
 const bot = new Bot("6621400116:AAElnt19ztBbaa0aNC9NHUkjOWVhIEjfn6E");
 
 const genres = ["Хорор", "Комедія", "Романтика", "Драма"];
+const watchedFilms = ["Horro1", "Comedy2", "Romance3", "Drama1"]
 const numberedGenres = genres
   .map((genre, index) => `${index + 1}. ${genre}`)
   .join("\n");
+
+  const watchedList = watchedFilms
+  .map((genre, index) => `${index + 1}. ${genre}`)
+  .join("\n");  
 let movieName = "Avengers";
 
 const genreMap = {
@@ -73,7 +78,13 @@ async function genreFilmChoice(ctx, genreNumber) {
       await ctx.reply(
         `Оберіть один з варіантів у списку фільмів у жанрі "${selectedGenre}":\n${movieList}`,
         {
-          reply_markup: returnToMenuKeyboard,
+          reply_markup: {
+            keyboard: [
+              [{ text: "Повернутись у головне меню" }],
+              [{ text: "Повернутись до обрання жанру" }],
+            ],
+            resize_keyboard: true,
+          },
         }
       );
     } else {
@@ -95,9 +106,12 @@ async function nameSearch(ctx) {
 }
 
 async function showWatchedList(ctx) {
-  await ctx.reply("Ось твій список переглянутих фільмів.", {
+  await ctx.reply(
+    `Ось твій список переглянутих фільмів/серіалів:\n${watchedList}`,
+    {
     reply_markup: returnToMenuKeyboard,
-  });
+    }
+  );
 }
 
 bot.command("start", async (ctx) => {
@@ -117,6 +131,8 @@ bot.on("message", async (ctx) => {
     await showWatchedList(ctx);
   } else if (messageText === "Повернутись у головне меню") {
     await sendMainMenu(ctx);
+  } else if (messageText === "Повернутись до обрання жанру") {
+    await genreSearch(ctx);
   } else if (
     !isNaN(messageText) &&
     parseInt(messageText) >= 1 &&
@@ -133,5 +149,6 @@ bot.on("message", async (ctx) => {
     );
   }
 });
+
 
 bot.start();
