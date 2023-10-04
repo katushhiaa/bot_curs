@@ -153,15 +153,15 @@ function getMovieInfoByTitle(title) {
   }
 }
 
+const returnToGenreMenu = async (ctx) => {
+  await genreSearch(ctx);
+};
+
 bot.command("start", async (ctx) => {
   const welcomeMessage =
     "Привіт. Дякую, що вирішив скористатись нашим ботом. Обери дію:";
   await ctx.reply(welcomeMessage, { reply_markup: mainMenuKeyboard });
 });
-
-const returnToGenreMenu = async (ctx) => {
-  await genreSearch(ctx);
-};
 
 bot.on("message", async (ctx) => {
   const messageText = ctx.message.text;
