@@ -6,10 +6,7 @@ const { Bot, Composer } = require("grammy");
 const bot = new Bot("6621400116:AAElnt19ztBbaa0aNC9NHUkjOWVhIEjfn6E");
 
 let genres = [];
-const numberedGenres = genres
-  .map((genre, index) => `${index + 1}. ${genre}`)
-  .join("\n");
-
+let genreList = [];
 const watchedFilms = ["Horro1", "Comedy2", "Romance3", "Drama1"];
 const watchedList = watchedFilms
   .map((genre, index) => `${index + 1}. ${genre}`)
@@ -22,17 +19,8 @@ let movieFeedback = "Супер фільм";
 let movieDescription =
   "Локі, бог з Асґарду, укладає угоду з інопланетною формою життя, щоб захопити Землю. Міжнародна організація Щ.И.Т. збирає видатних героїв сучасності, щоб відбити його атаку. У бій з загарбником вступають Капітан Америка, Тор, Залізна людина, Неймовірний Халк, Соколине око і Чорна вдова.";
 
-const genreList = {
-  1: "Хорор",
-  2: "Комедія",
-  3: "Романтика",
-  4: "Драма",
-};
-
-const horrorMovies = ["Horror1", "Horror2", "Horror3"];
-const comedyMovies = ["Comedy1", "Comedy2", "Comedy3"];
-const romanceMovies = ["Romance1", "Romance2", "Romance3"];
-const dramaMovies = ["Drama1", "Drama2", "Drama3"];
+let id = 0;
+let text = "";
 
 const mainMenuKeyboard = {
   keyboard: [
@@ -66,12 +54,12 @@ async function getGenres(ctx) {
 
   const { JSDOM } = jsdom;
   const dom = new JSDOM(body);
-  const list = Array.from(
+  genreList = Array.from(
     dom.window.document.querySelectorAll('[data-placeholder="Жанр"] option')
   ).map((item) => {
     return { id: item.value, text: item.textContent };
   });
-  genres = list.map((i) => i.text).filter((genre) => genre.trim() !== "");
+  genres = genreList.map((i) => i.text).filter((genre) => genre.trim() !== "");
   const numberedGenres = genres
     .map((genre, index) => `${index + 1}. ${genre}`)
     .join("\n");
@@ -81,87 +69,34 @@ async function getGenres(ctx) {
   });
 }
 
-// async function genreFilmChoice(ctx, genreNumber) {
-//   const selectedGenre = genreList[genreNumber];
-
-//   if (selectedGenre) {
-//     let moviesByGenre = [];
-
-//     switch (selectedGenre) {
-//       case "Хорор":
-//         moviesByGenre = horrorMovies;
-//         break;
-//       case "Комедія":
-//         moviesByGenre = comedyMovies;
-//         break;
-//       case "Романтика":
-//         moviesByGenre = romanceMovies;
-//         break;
-//       case "Драма":
-//         moviesByGenre = dramaMovies;
-//         break;
-//       default:
-//         break;
-//     }
-
-//     if (moviesByGenre.length > 0) {
-//       const movieList = moviesByGenre.join("\n");
-//       await ctx.reply(
-//         `Оберіть один з варіантів у списку фільмів у жанрі "${selectedGenre}":\n${movieList}`,
-//         {
-//           reply_markup: {
-//             keyboard: [
-//               [{ text: "Повернутись у головне меню" }],
-//               [{ text: "Повернутись до обрання жанру" }],
-//             ],
-//             resize_keyboard: true,
-//           },
-//         }
-//       );
-//     } else {
-//       await ctx.reply(`На жаль, у жанрі "${selectedGenre}" немає фільмів.`, {
-//         reply_markup: returnToMenuKeyboard,
-//       });
-//     }
-//   } else {
-//     await ctx.reply("Невірний номер жанру. Вибери номер зі списку.", {
-//       reply_markup: returnToMenuKeyboard,
-//     });
-//   }
-// }
-
 async function genreFilmChoice(ctx, genreNumber) {
-  const selectedGenre = genreList[genreNumber];
-
-  if (selectedGenre) {
+  if (genreNumber >= 1 && genreNumber <= genreList.length) {
+    const selectedGenre = genreList[genreNumber];
     const response = await fetch(
-      `https://uaserials.pro/films/f/year=1920;2023/imdb=0;10/cat=${list.id}`
+      `https://uaserials.pro/films/f/year=1920;2023/imdb=0;10/cat=${selectedGenre.id}`
     );
+
     const body = await response.text();
 
+    const { JSDOM } = jsdom;
     const dom = new JSDOM(body);
+
     const movieElements = Array.from(
       dom.window.document.querySelectorAll(".short-item")
     );
 
     const top10Movies = movieElements.slice(0, 10).map((element) => {
       const title = element.querySelector(".th-title").textContent;
-      const description = element.querySelector(".th-title-oname").textContent;
-      const link = element.querySelector("a").href;
-      return { title, description, link };
+      const englTitle = element.querySelector(".th-title-oname").textContent;
+      return { title, englTitle };
     });
 
-    // Виведіть перші 10 фільмів у боті
-    const movieListText = top10Movies
-      .map((movie, index) => {
-        return `${index + 1}. ${movie.title}\nОпис: ${
-          movie.description
-        }\nПосилання: ${movie.link}`;
-      })
-      .join("\n");
-
     await ctx.reply(
-      `Перші 10 фільмів у жанрі "${selectedGenre}":\n${movieListText}`,
+      `Перші 10 фільмів у жанрі "${selectedGenre.text}":\n${top10Movies
+        .map(
+          (movie, index) => `${index + 1}. ${movie.title}(${movie.englTitle})`
+        )
+        .join("\n")}`,
       {
         reply_markup: returnToMenuKeyboard,
       }
@@ -246,11 +181,7 @@ bot.on("message", async (ctx) => {
     await sendMainMenu(ctx);
   } else if (messageText === "Повернутись до обрання жанру") {
     await returnToGenreMenu(ctx);
-  } else if (
-    !isNaN(messageText) &&
-    parseInt(messageText) >= 1 &&
-    parseInt(messageText) <= 4
-  ) {
+  } else if (!isNaN(messageText)) {
     const genreNumber = parseInt(messageText);
     await genreFilmChoice(ctx, genreNumber);
   } else {
@@ -258,5 +189,3 @@ bot.on("message", async (ctx) => {
   }
 });
 bot.start();
-
-// const list = Array.from(document.querySelectorAll('[data-placeholder="Жанр"] option')).map(item => item.innerText)
