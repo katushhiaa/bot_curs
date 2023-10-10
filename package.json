@@ -1,6 +1,8 @@
 {
   "dependencies": {
     "@grammyjs/menu": "^1.2.1",
-    "grammy": "^1.18.1"
+    "grammy": "^1.18.1",
+    "jsdom": "^22.1.0",
+    "node-fetch": "^3.3.2"
   }
 }

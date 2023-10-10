@@ -1,11 +1,19 @@
+const jsdom = require("jsdom");
+const fetch = (...args) =>
+  import("node-fetch").then(({ default: fetch }) => fetch(...args));
+
 const { Bot, Composer } = require("grammy");
 const bot = new Bot("6621400116:AAElnt19ztBbaa0aNC9NHUkjOWVhIEjfn6E");
 
-const genres = ["Хорор", "Комедія", "Романтика", "Драма"];
-const numberedGenres = genres.map((genre, index) => `${index + 1}. ${genre}`).join("\n");
+let genres = [];
+const numberedGenres = genres
+  .map((genre, index) => `${index + 1}. ${genre}`)
+  .join("\n");
 
 const watchedFilms = ["Horro1", "Comedy2", "Romance3", "Drama1"];
-const watchedList = watchedFilms.map((genre, index) => `${index + 1}. ${genre}`).join("\n");
+const watchedList = watchedFilms
+  .map((genre, index) => `${index + 1}. ${genre}`)
+  .join("\n");
 
 let movieTitle = "Avengers";
 let movieURL = "https://uaserials.pro/2380-mesnyky.html";
@@ -35,6 +43,8 @@ const mainMenuKeyboard = {
   resize_keyboard: true,
 };
 
+//`https://uaserials.pro/films/f/year=1920;2023/imdb=0;10/cat=${id}` // link to genre
+
 const returnToMenuKeyboard = {
   keyboard: [[{ text: "Повернутись у головне меню" }]],
   resize_keyboard: true,
@@ -50,50 +60,114 @@ async function genreSearch(ctx) {
   });
 }
 
+async function getGenres(ctx) {
+  const response = await fetch("https://uaserials.pro/films/");
+  const body = await response.text();
+
+  const { JSDOM } = jsdom;
+  const dom = new JSDOM(body);
+  const list = Array.from(
+    dom.window.document.querySelectorAll('[data-placeholder="Жанр"] option')
+  ).map((item) => {
+    return { id: item.value, text: item.textContent };
+  });
+  genres = list.map((i) => i.text).filter((genre) => genre.trim() !== "");
+  const numberedGenres = genres
+    .map((genre, index) => `${index + 1}. ${genre}`)
+    .join("\n");
+
+  await ctx.reply(`Вибери жанр, щоб знайти фільми.\n${numberedGenres}`, {
+    reply_markup: returnToMenuKeyboard,
+  });
+}
+
+// async function genreFilmChoice(ctx, genreNumber) {
+//   const selectedGenre = genreList[genreNumber];
+
+//   if (selectedGenre) {
+//     let moviesByGenre = [];
+
+//     switch (selectedGenre) {
+//       case "Хорор":
+//         moviesByGenre = horrorMovies;
+//         break;
+//       case "Комедія":
+//         moviesByGenre = comedyMovies;
+//         break;
+//       case "Романтика":
+//         moviesByGenre = romanceMovies;
+//         break;
+//       case "Драма":
+//         moviesByGenre = dramaMovies;
+//         break;
+//       default:
+//         break;
+//     }
+
+//     if (moviesByGenre.length > 0) {
+//       const movieList = moviesByGenre.join("\n");
+//       await ctx.reply(
+//         `Оберіть один з варіантів у списку фільмів у жанрі "${selectedGenre}":\n${movieList}`,
+//         {
+//           reply_markup: {
+//             keyboard: [
+//               [{ text: "Повернутись у головне меню" }],
+//               [{ text: "Повернутись до обрання жанру" }],
+//             ],
+//             resize_keyboard: true,
+//           },
+//         }
+//       );
+//     } else {
+//       await ctx.reply(`На жаль, у жанрі "${selectedGenre}" немає фільмів.`, {
+//         reply_markup: returnToMenuKeyboard,
+//       });
+//     }
+//   } else {
+//     await ctx.reply("Невірний номер жанру. Вибери номер зі списку.", {
+//       reply_markup: returnToMenuKeyboard,
+//     });
+//   }
+// }
+
 async function genreFilmChoice(ctx, genreNumber) {
   const selectedGenre = genreList[genreNumber];
 
   if (selectedGenre) {
-    let moviesByGenre = [];
+    const response = await fetch(
+      `https://uaserials.pro/films/f/year=1920;2023/imdb=0;10/cat=${list.id}`
+    );
+    const body = await response.text();
 
-    switch (selectedGenre) {
-      case "Хорор":
-        moviesByGenre = horrorMovies;
-        break;
-      case "Комедія":
-        moviesByGenre = comedyMovies;
-        break;
-      case "Романтика":
-        moviesByGenre = romanceMovies;
-        break;
-      case "Драма":
-        moviesByGenre = dramaMovies;
-        break;
-      default:
-        break;
-    }
+    const dom = new JSDOM(body);
+    const movieElements = Array.from(
+      dom.window.document.querySelectorAll(".short-item")
+    );
 
-    if (moviesByGenre.length > 0) {
-      const movieList = moviesByGenre.join("\n");
-      await ctx.reply(
-        `Оберіть один з варіантів у списку фільмів у жанрі "${selectedGenre}":\n${movieList}`,
-        {
-          reply_markup: {
-            keyboard: [
-              [{ text: "Повернутись у головне меню" }],
-              [{ text: "Повернутись до обрання жанру" }],
-            ],
-            resize_keyboard: true,
-          },
-        }
-      );
-    } else {
-      await ctx.reply(`На жаль, у жанрі "${selectedGenre}" немає фільмів.`, {
+    const top10Movies = movieElements.slice(0, 10).map((element) => {
+      const title = element.querySelector(".th-title").textContent;
+      const description = element.querySelector(".th-title-oname").textContent;
+      const link = element.querySelector("a").href;
+      return { title, description, link };
+    });
+
+    // Виведіть перші 10 фільмів у боті
+    const movieListText = top10Movies
+      .map((movie, index) => {
+        return `${index + 1}. ${movie.title}\nОпис: ${
+          movie.description
+        }\nПосилання: ${movie.link}`;
+      })
+      .join("\n");
+
+    await ctx.reply(
+      `Перші 10 фільмів у жанрі "${selectedGenre}":\n${movieListText}`,
+      {
         reply_markup: returnToMenuKeyboard,
-      });
-    }
+      }
+    );
   } else {
-    await ctx.reply("Невірний номер жанру. Вибери номер зі списку.", {
+    await ctx.reply("Невірний номер жанру. Виберіть номер зі списку.", {
       reply_markup: returnToMenuKeyboard,
     });
   }
@@ -154,7 +228,8 @@ async function returnToGenreMenu(ctx) {
 }
 
 bot.command("start", async (ctx) => {
-  const welcomeMessage ="Привіт. Дякую, що вирішив скористатись нашим ботом. Обери дію:";
+  const welcomeMessage =
+    "Привіт. Дякую, що вирішив скористатись нашим ботом. Обери дію:";
   await ctx.reply(welcomeMessage, { reply_markup: mainMenuKeyboard });
 });
 
@@ -162,7 +237,7 @@ bot.on("message", async (ctx) => {
   const messageText = ctx.message.text;
 
   if (messageText === "Пошук по жанру") {
-    await genreSearch(ctx);
+    await getGenres(ctx);
   } else if (messageText === "Пошук по назві") {
     await searchByTitle(ctx);
   } else if (messageText === "Список переглянутих фільмів") {
@@ -183,3 +258,5 @@ bot.on("message", async (ctx) => {
   }
 });
 bot.start();
+
+// const list = Array.from(document.querySelectorAll('[data-placeholder="Жанр"] option')).map(item => item.innerText)
