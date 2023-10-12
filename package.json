@@ -3,6 +3,7 @@
     "@grammyjs/menu": "^1.2.1",
     "grammy": "^1.18.1",
     "jsdom": "^22.1.0",
-    "node-fetch": "^3.3.2"
+    "node-fetch": "^3.3.2",
+    "sqlite3": "^5.1.6"
   }
 }

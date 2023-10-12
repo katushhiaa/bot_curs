@@ -5,6 +5,10 @@ const fetch = (...args) =>
 const { Bot, Composer } = require("grammy");
 const bot = new Bot("6621400116:AAElnt19ztBbaa0aNC9NHUkjOWVhIEjfn6E");
 
+const sqlite3 = require("sqlite3").verbose();
+
+const db = new sqlite3.Database("Users.db");
+
 let genres = [];
 let genreList = [];
 let genreNumber = 0;
@@ -82,8 +86,6 @@ async function genreFilmChoice(ctx, genreNumber) {
       const title = element.querySelector(".th-title").textContent;
       const englTitle = element.querySelector(".th-title-oname").textContent;
       const filmUrl = element.querySelector(".short-img").href;
-      console.log(filmUrl);
-      //TODO: get film url
       return { title, englTitle, filmUrl };
     });
 
@@ -122,7 +124,14 @@ async function getFilmByNumber(ctx, movieURL) {
     dom.window.document.querySelectorAll(".comments-tree-item")
   );
 
+  function compareFeedbacks(a, b) {
+    return a.textContent.length - b.textContent.length;
+  }
+
+  movieFeedbacks.sort(compareFeedbacks);
+
   const feedBacksInfo = movieFeedbacks
+    .slice(0, 3)
     .map((element) => {
       const guestName = element.querySelector(".comm-author").textContent;
       const feedbackText = element.querySelector(".comm-two").textContent;
@@ -130,13 +139,17 @@ async function getFilmByNumber(ctx, movieURL) {
     })
     .join("\n");
 
-  console.log(movieDescription);
-  console.log(feedBacksInfo);
+  const moieUrlButton = {
+    text: movieTitle,
+    url: movieURL,
+  };
 
   await ctx.reply(
-    `${moviePicture} \n${movieTitle} \nОпис: ${movieDescription} \nВідгуки: ${feedBacksInfo} \nПосилання на фільм: ${movieURL}`,
+    `${moviePicture}\n*${movieTitle} \n*Опис:* \n${movieDescription} \n\n*Відгуки:*\n\n ${feedBacksInfo}`,
     {
-      reply_markup: returnToMenuKeyboard,
+      reply_markup: {
+        inline_keyboard: [[moieUrlButton]],
+      },
     }
   );
 }
@@ -182,6 +195,17 @@ async function returnToGenreMenu(ctx) {
 }
 
 bot.command("start", async (ctx) => {
+  // const userId = ctx.from.id;
+  // const phone = ctx.from.phone;
+  // const nickname = ctx.from.username;
+  // const username = ctx.from.first_name;
+
+  // const userDateInDB = db.prepare(
+  //   "INSERT INTO Users (user_id, user_phonenumber, user_nickname, user_name) VALUES (?, ?, ?, ?)"
+  // );
+  // userDateInDB.run(userId, phone, nickname, username);
+  // userDateInDB.finalize();
+
   const welcomeMessage =
     "Привіт. Дякую, що вирішив скористатись нашим ботом. Обери дію:";
   await ctx.reply(welcomeMessage, { reply_markup: mainMenuKeyboard });
