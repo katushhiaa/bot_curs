@@ -7,17 +7,12 @@ const bot = new Bot("6621400116:AAElnt19ztBbaa0aNC9NHUkjOWVhIEjfn6E");
 
 let genres = [];
 let genreList = [];
+let genreNumber = 0;
+let filmList = [];
 const watchedFilms = ["Horro1", "Comedy2", "Romance3", "Drama1"];
 const watchedList = watchedFilms
   .map((genre, index) => `${index + 1}. ${genre}`)
   .join("\n");
-
-let movieTitle = "Avengers";
-let movieURL = "https://uaserials.pro/2380-mesnyky.html";
-let moviePicture = "https://uaserials.pro/posters/2380.jpg";
-let movieFeedback = "Супер фільм";
-let movieDescription =
-  "Локі, бог з Асґарду, укладає угоду з інопланетною формою життя, щоб захопити Землю. Міжнародна організація Щ.И.Т. збирає видатних героїв сучасності, щоб відбити його атаку. У бій з загарбником вступають Капітан Америка, Тор, Залізна людина, Неймовірний Халк, Соколине око і Чорна вдова.";
 
 let id = 0;
 let text = "";
@@ -30,8 +25,6 @@ const mainMenuKeyboard = {
   ],
   resize_keyboard: true,
 };
-
-//`https://uaserials.pro/films/f/year=1920;2023/imdb=0;10/cat=${id}` // link to genre
 
 const returnToMenuKeyboard = {
   keyboard: [[{ text: "Повернутись у головне меню" }]],
@@ -88,7 +81,10 @@ async function genreFilmChoice(ctx, genreNumber) {
     const top10Movies = movieElements.slice(0, 10).map((element) => {
       const title = element.querySelector(".th-title").textContent;
       const englTitle = element.querySelector(".th-title-oname").textContent;
-      return { title, englTitle };
+      const filmUrl = element.querySelector(".short-img").href;
+      console.log(filmUrl);
+      //TODO: get film url
+      return { title, englTitle, filmUrl };
     });
 
     await ctx.reply(
@@ -101,31 +97,54 @@ async function genreFilmChoice(ctx, genreNumber) {
         reply_markup: returnToMenuKeyboard,
       }
     );
+    return top10Movies;
   } else {
     await ctx.reply("Невірний номер жанру. Виберіть номер зі списку.", {
       reply_markup: returnToMenuKeyboard,
     });
+    return [];
   }
+}
+
+async function getFilmByNumber(ctx, movieURL) {
+  const response = await fetch(movieURL);
+  const body = await response.text();
+
+  const { JSDOM } = jsdom;
+  const dom = new JSDOM(body);
+
+  const movieTitle =
+    dom.window.document.querySelector(".short-title").textContent;
+  const moviePicture = dom.window.document.querySelector(".fimg img").src;
+  const movieDescription =
+    dom.window.document.querySelector(".ftext").textContent;
+  const movieFeedbacks = Array.from(
+    dom.window.document.querySelectorAll(".comments-tree-item")
+  );
+
+  const feedBacksInfo = movieFeedbacks
+    .map((element) => {
+      const guestName = element.querySelector(".comm-author").textContent;
+      const feedbackText = element.querySelector(".comm-two").textContent;
+      return `${guestName}: ${feedbackText}`;
+    })
+    .join("\n");
+
+  console.log(movieDescription);
+  console.log(feedBacksInfo);
+
+  await ctx.reply(
+    `${moviePicture} \n${movieTitle} \nОпис: ${movieDescription} \nВідгуки: ${feedBacksInfo} \nПосилання на фільм: ${movieURL}`,
+    {
+      reply_markup: returnToMenuKeyboard,
+    }
+  );
 }
 
 async function searchByTitle(ctx) {
   await ctx.reply("Ти обрав пошук по назві. Введи назву фільму для пошуку.", {
     reply_markup: returnToMenuKeyboard,
   });
-}
-
-function getMovieInfoByTitle(title) {
-  if (title === movieTitle) {
-    return {
-      title: "Месники",
-      picture: moviePicture,
-      description: movieDescription,
-      feedback: movieFeedback,
-      url: movieURL,
-    };
-  } else {
-    return null; // Фільм не знайдено
-  }
 }
 
 async function getMovieByTitle(ctx) {
@@ -175,17 +194,21 @@ bot.on("message", async (ctx) => {
     await getGenres(ctx);
   } else if (messageText === "Пошук по назві") {
     await searchByTitle(ctx);
+  } else if (messageText === "Повернутись у головне меню") {
+    genreNumber = 0;
+    await sendMainMenu(ctx);
   } else if (messageText === "Список переглянутих фільмів") {
     await showWatchedList(ctx);
-  } else if (messageText === "Повернутись у меню") {
-    await sendMainMenu(ctx);
   } else if (messageText === "Повернутись до обрання жанру") {
     await returnToGenreMenu(ctx);
   } else if (!isNaN(messageText)) {
-    const genreNumber = parseInt(messageText);
-    await genreFilmChoice(ctx, genreNumber);
-  } else {
-    await getMovieByTitle(ctx);
+    if (!genreNumber) {
+      genreNumber = parseInt(messageText);
+      filmList = await genreFilmChoice(ctx, genreNumber); //getFilmListByGenreNumber // save to filmList list of films url
+    } else {
+      const filmNum = parseInt(messageText);
+      await getFilmByNumber(ctx, filmList[filmNum - 1].filmUrl); // grtFilmByNumber - fetch url, get film info and send it to bot
+    }
   }
 });
 bot.start();
