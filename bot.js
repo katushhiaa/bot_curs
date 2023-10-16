@@ -70,7 +70,7 @@ async function genreFilmChoice(ctx, genreNumber) {
   if (genreNumber >= 1 && genreNumber <= genreList.length) {
     const selectedGenre = genreList[genreNumber];
     const response = await fetch(
-      `https://uaserials.pro/films/f/year=1920;2023/imdb=0;10/cat=${selectedGenre.id}`
+      `https://uaserials.pro/films/f/year=1920;2023/imdb=7;10/cat=${selectedGenre.id}`
     );
 
     const body = await response.text();
@@ -82,7 +82,7 @@ async function genreFilmChoice(ctx, genreNumber) {
       dom.window.document.querySelectorAll(".short-item")
     );
 
-    const top10Movies = movieElements.slice(0, 10).map((element) => {
+    const movieList = movieElements.slice(0, 10).map((element) => {
       const title = element.querySelector(".th-title").textContent;
       const englTitle = element.querySelector(".th-title-oname").textContent;
       const filmUrl = element.querySelector(".short-img").href;
@@ -90,7 +90,7 @@ async function genreFilmChoice(ctx, genreNumber) {
     });
 
     await ctx.reply(
-      `Перші 10 фільмів у жанрі "${selectedGenre.text}":\n${top10Movies
+      `Перші 10 фільмів у жанрі "${selectedGenre.text}":\n${movieList
         .map(
           (movie, index) => `${index + 1}. ${movie.title}(${movie.englTitle})`
         )
@@ -99,7 +99,7 @@ async function genreFilmChoice(ctx, genreNumber) {
         reply_markup: returnToMenuKeyboard,
       }
     );
-    return top10Movies;
+    return movieList;
   } else {
     await ctx.reply("Невірний номер жанру. Виберіть номер зі списку.", {
       reply_markup: returnToMenuKeyboard,
@@ -139,16 +139,20 @@ async function getFilmByNumber(ctx, movieURL) {
     })
     .join("\n");
 
-  const moieUrlButton = {
-    text: movieTitle,
+  const movieYear =
+    dom.window.document.querySelector("a[href*='/year/']").textContent;
+
+  const movieUrlButton = {
+    text: `${movieTitle}(${movieYear})`,
     url: movieURL,
   };
 
   await ctx.reply(
-    `${moviePicture}\n*${movieTitle} \n*Опис:* \n${movieDescription} \n\n*Відгуки:*\n\n ${feedBacksInfo}`,
+    `<b>${movieTitle}(${movieYear})</b>\n<a href="${moviePicture}">&#8205;</a>\n<b>Опис:</b>\n${movieDescription}\n\n<b>Відгуки:</b>\n\n${feedBacksInfo}`,
     {
+      parse_mode: "HTML",
       reply_markup: {
-        inline_keyboard: [[moieUrlButton]],
+        inline_keyboard: [[movieUrlButton]],
       },
     }
   );
@@ -169,11 +173,11 @@ async function getMovieByTitle(ctx) {
   }
 
   const movieTitle = messageText;
-  const movieInfo = getMovieInfoByTitle(movieTitle);
+  const movieInfo = await getMovieInfoByTitle(movieTitle);
 
   if (movieInfo) {
     await ctx.replyWithPhoto(movieInfo.picture, {
-      caption: `${movieInfo.title}\n\nОпис: ${movieInfo.description}\n\n Відгуки: ${movieInfo.feedback}\n\n${movieInfo.url}`,
+      caption: `${movieInfo.title}\n\nОпис: ${movieInfo.description}\n\n${movieInfo.url}`,
     });
   } else {
     await ctx.reply(
@@ -235,4 +239,5 @@ bot.on("message", async (ctx) => {
     }
   }
 });
+
 bot.start();
