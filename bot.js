@@ -11,8 +11,7 @@ const db = new sqlite3.Database("Users.db");
 
 let genres = [];
 let genreList = [];
-let genreNumber = 0;
-let filmList = [];
+let movieList = [];
 const watchedFilms = ["Horro1", "Comedy2", "Romance3", "Drama1"];
 const watchedList = watchedFilms
   .map((genre, index) => `${index + 1}. ${genre}`)
@@ -37,6 +36,7 @@ const returnToMenuKeyboard = {
 
 async function sendMainMenu(ctx) {
   await ctx.reply("Обери дію:", { reply_markup: mainMenuKeyboard });
+  botStatus === "main_menu";
 }
 
 async function genreSearch(ctx) {
@@ -66,45 +66,53 @@ async function getGenres(ctx) {
   });
 }
 
-async function genreFilmChoice(ctx, genreNumber) {
-  if (genreNumber >= 1 && genreNumber <= genreList.length) {
-    const selectedGenre = genreList[genreNumber];
-    const response = await fetch(
-      `https://uaserials.pro/films/f/year=1920;2023/imdb=7;10/cat=${selectedGenre.id}`
-    );
+async function listOfMoviesByGenres(ctx, messageText) {
+  if (!isNaN(parseInt(messageText))) {
+    const genreNumber = parseInt(messageText);
+    if (botStatus === "genre") {
+      if (genreNumber >= 1 && genreNumber <= genreList.length) {
+        const selectedGenre = genreList[genreNumber];
+        const response = await fetch(
+          `https://uaserials.pro/films/f/year=1920;2023/imdb=7;10/cat=${selectedGenre.id}`
+        );
 
-    const body = await response.text();
+        const body = await response.text();
 
-    const { JSDOM } = jsdom;
-    const dom = new JSDOM(body);
+        const { JSDOM } = jsdom;
+        const dom = new JSDOM(body);
 
-    const movieElements = Array.from(
-      dom.window.document.querySelectorAll(".short-item")
-    );
+        const movieElements = Array.from(
+          dom.window.document.querySelectorAll(".short-item")
+        );
 
-    const movieList = movieElements.slice(0, 10).map((element) => {
-      const title = element.querySelector(".th-title").textContent;
-      const englTitle = element.querySelector(".th-title-oname").textContent;
-      const filmUrl = element.querySelector(".short-img").href;
-      return { title, englTitle, filmUrl };
-    });
+        const movieList = movieElements.slice(0, 10).map((element) => {
+          const title = element.querySelector(".th-title").textContent;
+          const englTitle =
+            element.querySelector(".th-title-oname").textContent;
+          const filmUrl = element.querySelector(".short-img").href;
+          return { title, englTitle, filmUrl };
+        });
 
-    await ctx.reply(
-      `Перші 10 фільмів у жанрі "${selectedGenre.text}":\n${movieList
-        .map(
-          (movie, index) => `${index + 1}. ${movie.title}(${movie.englTitle})`
-        )
-        .join("\n")}`,
-      {
-        reply_markup: returnToMenuKeyboard,
+        await ctx.reply(
+          `Перші 10 фільмів у жанрі "${selectedGenre.text}":\n${movieList
+            .map(
+              (movie, index) =>
+                `${index + 1}. ${movie.title}(${movie.englTitle})`
+            )
+            .join("\n")}`,
+          {
+            reply_markup: returnToMenuKeyboard,
+          }
+        );
+        botStatus = "genre_choice";
+        return movieList;
+      } else {
+        await ctx.reply("Невірний номер жанру. Виберіть номер зі списку.", {
+          reply_markup: returnToMenuKeyboard,
+        });
+        return [];
       }
-    );
-    return movieList;
-  } else {
-    await ctx.reply("Невірний номер жанру. Виберіть номер зі списку.", {
-      reply_markup: returnToMenuKeyboard,
-    });
-    return [];
+    }
   }
 }
 
@@ -215,43 +223,38 @@ bot.command("start", async (ctx) => {
   await ctx.reply(welcomeMessage, { reply_markup: mainMenuKeyboard });
 });
 
-let currentSearchType = "none";
+let botStatus = "main_menu";
 
 bot.on("message", async (ctx) => {
   const messageText = ctx.message.text;
 
-  if (messageText === "Пошук по жанру") {
-    currentSearchType = "genre";
-    await getGenres(ctx);
-  } else if (messageText === "Пошук по назві") {
-    currentSearchType = "title";
-    await searchByTitle(ctx);
-  } else if (messageText === "Список переглянутих фільмів") {
-    currentSearchType = "watched";
-    await showWatchedList(ctx);
-  } else if (messageText === "Повернутись у головне меню") {
+  if (messageText === "Повернутись у головне меню") {
     genreNumber = 0;
     await sendMainMenu(ctx);
   }
-  if (currentSearchType === "genre") {
-    if (!isNaN(messageText)) {
-      if (!genreNumber) {
-        genreNumber = parseInt(messageText);
-        filmList = await genreFilmChoice(ctx, genreNumber);
-      } else {
-        const filmNum = parseInt(messageText);
-        await getFilmByNumber(ctx, filmList[filmNum - 1].filmUrl);
-      }
+
+  if (botStatus === "main_menu") {
+    if (messageText === "Пошук по жанру") {
+      botStatus = "genre";
+      await getGenres(ctx);
+    } else if (messageText === "Пошук по назві") {
+      botStatus = "title";
+      await searchByTitle(ctx);
+    } else if (messageText === "Список переглянутих фільмів") {
+      botStatus = "watched";
+      await showWatchedList(ctx);
     }
   }
 
-  if (currentSearchType === "title") {
+  if (botStatus === "genre") {
+    listOfMoviesByGenres(ctx, messageText);
   }
 
-  if (currentSearchType === "watched") {
+  if (botStatus === "title") {
+  }
+
+  if (botStatus === "watched") {
   }
 });
 
 bot.start();
-
-//флажок селектМод в якому ми будемо писати коди, які будуть відповідати на якому типі пошуку ми знаходимось
