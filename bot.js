@@ -215,29 +215,43 @@ bot.command("start", async (ctx) => {
   await ctx.reply(welcomeMessage, { reply_markup: mainMenuKeyboard });
 });
 
+let currentSearchType = "none";
+
 bot.on("message", async (ctx) => {
   const messageText = ctx.message.text;
 
   if (messageText === "Пошук по жанру") {
+    currentSearchType = "genre";
     await getGenres(ctx);
   } else if (messageText === "Пошук по назві") {
+    currentSearchType = "title";
     await searchByTitle(ctx);
+  } else if (messageText === "Список переглянутих фільмів") {
+    currentSearchType = "watched";
+    await showWatchedList(ctx);
   } else if (messageText === "Повернутись у головне меню") {
     genreNumber = 0;
     await sendMainMenu(ctx);
-  } else if (messageText === "Список переглянутих фільмів") {
-    await showWatchedList(ctx);
-  } else if (messageText === "Повернутись до обрання жанру") {
-    await returnToGenreMenu(ctx);
-  } else if (!isNaN(messageText)) {
-    if (!genreNumber) {
-      genreNumber = parseInt(messageText);
-      filmList = await genreFilmChoice(ctx, genreNumber); //getFilmListByGenreNumber // save to filmList list of films url
-    } else {
-      const filmNum = parseInt(messageText);
-      await getFilmByNumber(ctx, filmList[filmNum - 1].filmUrl); // grtFilmByNumber - fetch url, get film info and send it to bot
+  }
+  if (currentSearchType === "genre") {
+    if (!isNaN(messageText)) {
+      if (!genreNumber) {
+        genreNumber = parseInt(messageText);
+        filmList = await genreFilmChoice(ctx, genreNumber);
+      } else {
+        const filmNum = parseInt(messageText);
+        await getFilmByNumber(ctx, filmList[filmNum - 1].filmUrl);
+      }
     }
+  }
+
+  if (currentSearchType === "title") {
+  }
+
+  if (currentSearchType === "watched") {
   }
 });
 
 bot.start();
+
+//флажок селектМод в якому ми будемо писати коди, які будуть відповідати на якому типі пошуку ми знаходимось
