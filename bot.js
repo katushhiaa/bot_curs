@@ -116,6 +116,7 @@ async function getFilmByNumber(ctx, messageText, filmList) {
   if (!isNaN(filmNumber)) {
     if (filmNumber >= 0 && filmNumber <= filmList.length) {
       const movieURL = filmList[filmNumber - 1].filmUrl;
+
       const response = await fetch(movieURL);
       const body = await response.text();
 
