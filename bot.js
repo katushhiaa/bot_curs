@@ -116,7 +116,6 @@ async function getFilmByNumber(ctx, messageText, filmList) {
   if (!isNaN(filmNumber)) {
     if (filmNumber >= 0 && filmNumber <= filmList.length) {
       const movieURL = filmList[filmNumber - 1].filmUrl;
-
       const response = await fetch(movieURL);
       const body = await response.text();
 
@@ -232,7 +231,6 @@ let botStatus = "none";
 
 bot.on("message", async (ctx) => {
   const messageText = ctx.message.text;
-  console.log(messageText);
   if (messageText === "Повернутись у головне меню") {
     botStatus = "main_menu";
     genreNumber = 0;
