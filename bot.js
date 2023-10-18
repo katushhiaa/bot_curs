@@ -11,7 +11,7 @@ const db = new sqlite3.Database("Users.db");
 
 let genres = [];
 let genreList = [];
-let movieList = [];
+let filmList = [];
 const watchedFilms = ["Horro1", "Comedy2", "Romance3", "Drama1"];
 const watchedList = watchedFilms
   .map((genre, index) => `${index + 1}. ${genre}`)
@@ -67,105 +67,109 @@ async function getGenres(ctx) {
 }
 
 async function listOfMoviesByGenres(ctx, messageText) {
-  if (!isNaN(parseInt(messageText))) {
-    const genreNumber = parseInt(messageText);
-    if (botStatus === "genre") {
-      if (genreNumber >= 1 && genreNumber <= genreList.length) {
-        const selectedGenre = genreList[genreNumber];
-        const response = await fetch(
-          `https://uaserials.pro/films/f/year=1920;2023/imdb=7;10/cat=${selectedGenre.id}`
-        );
+  const genreNumber = parseInt(messageText);
+  if (!isNaN(genreNumber)) {
+    if (genreNumber >= 1 && genreNumber <= genreList.length) {
+      const selectedGenre = genreList[genreNumber];
+      const response = await fetch(
+        `https://uaserials.pro/films/f/year=1920;2023/imdb=7;10/cat=${selectedGenre.id}`
+      );
 
-        const body = await response.text();
+      const body = await response.text();
 
-        const { JSDOM } = jsdom;
-        const dom = new JSDOM(body);
+      const { JSDOM } = jsdom;
+      const dom = new JSDOM(body);
 
-        const movieElements = Array.from(
-          dom.window.document.querySelectorAll(".short-item")
-        );
+      const movieElements = Array.from(
+        dom.window.document.querySelectorAll(".short-item")
+      );
 
-        const movieList = movieElements.slice(0, 10).map((element) => {
-          const title = element.querySelector(".th-title").textContent;
-          const englTitle =
-            element.querySelector(".th-title-oname").textContent;
-          const filmUrl = element.querySelector(".short-img").href;
-          return { title, englTitle, filmUrl };
-        });
+      const movieList = movieElements.slice(0, 10).map((element) => {
+        const title = element.querySelector(".th-title").textContent;
+        const englTitle = element.querySelector(".th-title-oname").textContent;
+        const filmUrl = element.querySelector(".short-img").href;
+        return { title, englTitle, filmUrl };
+      });
 
-        await ctx.reply(
-          `Перші 10 фільмів у жанрі "${selectedGenre.text}":\n${movieList
-            .map(
-              (movie, index) =>
-                `${index + 1}. ${movie.title}(${movie.englTitle})`
-            )
-            .join("\n")}`,
-          {
-            reply_markup: returnToMenuKeyboard,
-          }
-        );
-        botStatus = "genre_choice";
-        return movieList;
-      } else {
-        await ctx.reply("Невірний номер жанру. Виберіть номер зі списку.", {
+      await ctx.reply(
+        `Перші 10 фільмів у жанрі "${selectedGenre.text}":\n${movieList
+          .map(
+            (movie, index) => `${index + 1}. ${movie.title}(${movie.englTitle})`
+          )
+          .join("\n")}`,
+        {
           reply_markup: returnToMenuKeyboard,
-        });
-        return [];
+        }
+      );
+      botStatus = "genre_choice";
+      return movieList;
+    }
+  }
+  await ctx.reply("Невірний номер жанру. Виберіть номер зі списку.", {
+    reply_markup: returnToMenuKeyboard,
+  });
+  return [];
+}
+
+async function getFilmByNumber(ctx, messageText, filmList) {
+  const filmNumber = parseInt(messageText);
+  if (!isNaN(filmNumber)) {
+    if (filmNumber >= 0 && filmNumber <= filmList.length) {
+      const movieURL = filmList[filmNumber - 1].filmUrl;
+      const response = await fetch(movieURL);
+      const body = await response.text();
+
+      const { JSDOM } = jsdom;
+      const dom = new JSDOM(body);
+
+      const movieTitle =
+        dom.window.document.querySelector(".short-title").textContent;
+      const moviePicture = dom.window.document.querySelector(".fimg img").src;
+      const movieDescription =
+        dom.window.document.querySelector(".ftext").textContent;
+      const movieFeedbacks = Array.from(
+        dom.window.document.querySelectorAll(".comments-tree-item")
+      );
+
+      function compareFeedbacks(a, b) {
+        return a.textContent.length - b.textContent.length;
       }
+
+      movieFeedbacks.sort(compareFeedbacks);
+
+      const feedBacksInfo = movieFeedbacks
+        .slice(0, 3)
+        .map((element) => {
+          const guestName = element.querySelector(".comm-author").textContent;
+          const feedbackText = element.querySelector(".comm-two").textContent;
+          return `${guestName}: ${feedbackText}`;
+        })
+        .join("\n");
+
+      const movieYear =
+        dom.window.document.querySelector("a[href*='/year/']").textContent;
+
+      const movieUrlButton = {
+        text: `${movieTitle}(${movieYear})`,
+        url: movieURL,
+      };
+
+      await ctx.reply(
+        `<b>${movieTitle}(${movieYear})</b>\n<a href="${moviePicture}">&#8205;</a>\n<b>Опис:</b>\n${movieDescription}\n\n<b>Відгуки:</b>\n\n${feedBacksInfo}`,
+        {
+          parse_mode: "HTML",
+          reply_markup: {
+            inline_keyboard: [[movieUrlButton]],
+          },
+        }
+      );
+      return;
     }
   }
+  await ctx.reply("Невірний номер фільму. Виберіть номер зі списку.", {
+    reply_markup: returnToMenuKeyboard,
+  });
 }
-
-async function getFilmByNumber(ctx, movieURL) {
-  const response = await fetch(movieURL);
-  const body = await response.text();
-
-  const { JSDOM } = jsdom;
-  const dom = new JSDOM(body);
-
-  const movieTitle =
-    dom.window.document.querySelector(".short-title").textContent;
-  const moviePicture = dom.window.document.querySelector(".fimg img").src;
-  const movieDescription =
-    dom.window.document.querySelector(".ftext").textContent;
-  const movieFeedbacks = Array.from(
-    dom.window.document.querySelectorAll(".comments-tree-item")
-  );
-
-  function compareFeedbacks(a, b) {
-    return a.textContent.length - b.textContent.length;
-  }
-
-  movieFeedbacks.sort(compareFeedbacks);
-
-  const feedBacksInfo = movieFeedbacks
-    .slice(0, 3)
-    .map((element) => {
-      const guestName = element.querySelector(".comm-author").textContent;
-      const feedbackText = element.querySelector(".comm-two").textContent;
-      return `${guestName}: ${feedbackText}`;
-    })
-    .join("\n");
-
-  const movieYear =
-    dom.window.document.querySelector("a[href*='/year/']").textContent;
-
-  const movieUrlButton = {
-    text: `${movieTitle}(${movieYear})`,
-    url: movieURL,
-  };
-
-  await ctx.reply(
-    `<b>${movieTitle}(${movieYear})</b>\n<a href="${moviePicture}">&#8205;</a>\n<b>Опис:</b>\n${movieDescription}\n\n<b>Відгуки:</b>\n\n${feedBacksInfo}`,
-    {
-      parse_mode: "HTML",
-      reply_markup: {
-        inline_keyboard: [[movieUrlButton]],
-      },
-    }
-  );
-}
-
 async function searchByTitle(ctx) {
   await ctx.reply("Ти обрав пошук по назві. Введи назву фільму для пошуку.", {
     reply_markup: returnToMenuKeyboard,
@@ -223,37 +227,35 @@ bot.command("start", async (ctx) => {
   await ctx.reply(welcomeMessage, { reply_markup: mainMenuKeyboard });
 });
 
-let botStatus = "main_menu";
+let botStatus = "none";
 
 bot.on("message", async (ctx) => {
   const messageText = ctx.message.text;
-
   if (messageText === "Повернутись у головне меню") {
+    botStatus = "main_menu";
     genreNumber = 0;
-    await sendMainMenu(ctx);
+    filmNumber = 0;
+    sendMainMenu(ctx);
+    return;
   }
 
   if (botStatus === "main_menu") {
     if (messageText === "Пошук по жанру") {
       botStatus = "genre";
-      await getGenres(ctx);
+      getGenres(ctx);
     } else if (messageText === "Пошук по назві") {
       botStatus = "title";
-      await searchByTitle(ctx);
+      searchByTitle(ctx);
     } else if (messageText === "Список переглянутих фільмів") {
       botStatus = "watched";
-      await showWatchedList(ctx);
+      showWatchedList(ctx);
     }
-  }
-
-  if (botStatus === "genre") {
-    listOfMoviesByGenres(ctx, messageText);
-  }
-
-  if (botStatus === "title") {
-  }
-
-  if (botStatus === "watched") {
+  } else if (botStatus === "genre") {
+    filmList = await listOfMoviesByGenres(ctx, messageText);
+  } else if (botStatus === "title") {
+  } else if (botStatus === "watched") {
+  } else if (botStatus === "genre_choice") {
+    getFilmByNumber(ctx, messageText, filmList);
   }
 });
 
