@@ -232,6 +232,7 @@ let botStatus = "none";
 
 bot.on("message", async (ctx) => {
   const messageText = ctx.message.text;
+  console.log(messageText);
   if (messageText === "Повернутись у головне меню") {
     botStatus = "main_menu";
     genreNumber = 0;
