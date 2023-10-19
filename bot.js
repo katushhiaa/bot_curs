@@ -180,7 +180,7 @@ async function searchByTitle(ctx) {
 async function getMovieByTitle(ctx) {
   const movieTitle = ctx.message.text;
 
-  const postResponse = await fetch("https://uaserials.pro/", {
+  const response = await fetch("https://uaserials.pro/", {
     method: "POST",
     body: JSON.stringify({
       do: "search",
@@ -192,7 +192,6 @@ async function getMovieByTitle(ctx) {
     },
   });
 
-  const response = await fetch("https://uaserials.pro/");
   const body = await response.text();
 
   const { JSDOM } = jsdom;
