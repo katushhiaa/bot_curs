@@ -171,25 +171,50 @@ async function getFilmByNumber(ctx, messageText, filmList) {
   });
 }
 async function searchByTitle(ctx) {
+  botStatus = "title";
   await ctx.reply("Ти обрав пошук по назві. Введи назву фільму для пошуку.", {
     reply_markup: returnToMenuKeyboard,
   });
 }
 
 async function getMovieByTitle(ctx) {
-  const messageText = ctx.message.text;
+  const movieTitle = ctx.message.text;
 
-  if (messageText === "Повернутись у головне меню") {
-    await sendMainMenu(ctx);
-    return;
-  }
+  const postResponse = await fetch("https://uaserials.pro/", {
+    method: "POST",
+    body: JSON.stringify({
+      do: "search",
+      subaction: "search",
+      story: movieTitle,
+    }),
+    headers: {
+      "Content-type": "application/json; charset=utf-8",
+    },
+  });
 
-  const movieTitle = messageText;
-  const movieInfo = await getMovieInfoByTitle(movieTitle);
+  const response = await fetch("https://uaserials.pro/");
+  const body = await response.text();
+
+  const { JSDOM } = jsdom;
+  const dom = new JSDOM(body);
+
+  const movieElements = Array.from(
+    dom.window.document.querySelectorAll(".short-item")
+  );
+
+  const movieInfo = movieElements.map((element) => {
+    const description = element.querySelector(".ftext").textContent;
+    //const feedbacks = element.querySelector(".th-title-oname").textContent;
+    const filmUrl = element.querySelector(".short-img").href;
+    const picture = element.querySelector(".fimg img").src;
+    return { description, picture, filmUrl };
+  });
+
+  console.log(movieInfo);
 
   if (movieInfo) {
-    await ctx.replyWithPhoto(movieInfo.picture, {
-      caption: `${movieInfo.title}\n\nОпис: ${movieInfo.description}\n\n${movieInfo.url}`,
+    await ctx.reply(movieInfo.picture, {
+      caption: `${movieTitle}\n\nОпис: ${movieInfo.description}\n\n${movieInfo.filmUrl}`,
     });
   } else {
     await ctx.reply(
@@ -227,17 +252,17 @@ bot.command("start", async (ctx) => {
   await ctx.reply(welcomeMessage, { reply_markup: mainMenuKeyboard });
 });
 
-let botStatus = "none";
+let botStatus = "main_menu";
 
 bot.on("message", async (ctx) => {
   const messageText = ctx.message.text;
   if (messageText === "Повернутись у головне меню") {
-    botStatus = "main_menu";
     genreNumber = 0;
-    filmNumber = 0;
     sendMainMenu(ctx);
-    return;
+    botStatus = "main_menu";
   }
+
+  console.log(botStatus);
 
   if (botStatus === "main_menu") {
     if (messageText === "Пошук по жанру") {
@@ -253,6 +278,7 @@ bot.on("message", async (ctx) => {
   } else if (botStatus === "genre") {
     filmList = await listOfMoviesByGenres(ctx, messageText);
   } else if (botStatus === "title") {
+    getMovieByTitle(ctx);
   } else if (botStatus === "watched") {
   } else if (botStatus === "genre_choice") {
     getFilmByNumber(ctx, messageText, filmList);
