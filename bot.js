@@ -5,9 +5,18 @@ const fetch = (...args) =>
 const { Bot, Composer } = require("grammy");
 const bot = new Bot("6621400116:AAElnt19ztBbaa0aNC9NHUkjOWVhIEjfn6E");
 
-const sqlite3 = require("sqlite3").verbose();
+let mySql = require("mysql");
 
-const db = new sqlite3.Database("Users.db");
+let con = mySql.createConnection({
+  host: "localhost",
+  user: "kate",
+  password: "12345"
+});
+
+con.connect(function(err) {
+  if (err) throw err;
+  console.log("Connected!");
+});
 
 let genres = [];
 let genreList = [];
@@ -235,17 +244,6 @@ async function returnToGenreMenu(ctx) {
 }
 
 bot.command("start", async (ctx) => {
-  // const userId = ctx.from.id;
-  // const phone = ctx.from.phone;
-  // const nickname = ctx.from.username;
-  // const username = ctx.from.first_name;
-
-  // const userDateInDB = db.prepare(
-  //   "INSERT INTO Users (user_id, user_phonenumber, user_nickname, user_name) VALUES (?, ?, ?, ?)"
-  // );
-  // userDateInDB.run(userId, phone, nickname, username);
-  // userDateInDB.finalize();
-
   const welcomeMessage =
     "Привіт. Дякую, що вирішив скористатись нашим ботом. Обери дію:";
   await ctx.reply(welcomeMessage, { reply_markup: mainMenuKeyboard });
