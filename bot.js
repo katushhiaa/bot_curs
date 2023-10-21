@@ -6,32 +6,35 @@ const { Bot, Composer } = require("grammy");
 const bot = new Bot("6621400116:AAElnt19ztBbaa0aNC9NHUkjOWVhIEjfn6E");
 
 let express = require("express");
-// let mySql = require("mysql");
+const { MongoClient } = require("mongodb");
 
-// const db = mySql.createConnection({
-//   host: "localhost",
-//   user: "root",
-//   password: "",
-// });
+const url = "mongodb://localhost:27017";
+const client = new MongoClient(url);
+const dbName = "chatBot";
 
-// db.connect((err) => {
-//   if (err) {
-//     throw err;
-//   }
-//   console.log(Connected);
-// });
+async function dbConnect() {
+  // Use connect method to connect to the server
+  await client.connect();
+  console.log("Connected successfully to server");
+  const db = client.db(dbName);
+  const collection = db.collection("films");
 
-// const app = express();
+  // const insertResult = await collection.insertMany([
+  //   { userId: 1, filmUrl: "https:\\?????" },
+  //   { userId: 1, filmUrl: "https:\\?????" },
+  //   { userId: 3, filmUrl: "https:\\!!!!!!" },
+  // ]);
+  // console.log("Inserted films =>", insertResult);
 
-// app.get("/createdb", (req, res) => {
-//   let sql = "CREATE DATABASE Users";
-//   db.query(sql, (err) => {
-//     if (err) {
-//       throw err;
-//     }
-//     res.send("DB created");
-//   });
-// });
+  const filteredFilms = await collection.find({ userId: 1 }).toArray();
+  console.log("Found films filtered by userId =>", filteredFilms);
+
+  client.close();
+
+  // the following code examples can be pasted here...
+
+  return "done.";
+}
 
 let genres = [];
 let genreList = [];
@@ -268,6 +271,7 @@ bot.command("start", async (ctx) => {
 let botStatus = "main_menu";
 
 bot.on("message", async (ctx) => {
+  console.log("ctx", ctx.update.message.from);
   const messageText = ctx.message.text;
   if (messageText === "Повернутись у головне меню") {
     genreNumber = 0;
@@ -298,4 +302,9 @@ bot.on("message", async (ctx) => {
   }
 });
 
-bot.start();
+async function init() {
+  // await dbConnect();
+  bot.start();
+}
+
+init();

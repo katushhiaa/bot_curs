@@ -4,8 +4,19 @@
     "express": "^4.18.2",
     "grammy": "^1.18.1",
     "jsdom": "^22.1.0",
+    "mongodb": "^6.2.0",
     "mysql": "^2.18.1",
     "node-fetch": "^3.3.2",
     "sqlite3": "^5.1.6"
-  }
+  },
+  "name": "bot_curs-1",
+  "version": "1.0.0",
+  "main": "bot.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": ""
 }
