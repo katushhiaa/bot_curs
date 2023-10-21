@@ -5,18 +5,33 @@ const fetch = (...args) =>
 const { Bot, Composer } = require("grammy");
 const bot = new Bot("6621400116:AAElnt19ztBbaa0aNC9NHUkjOWVhIEjfn6E");
 
-let mySql = require("mysql");
+let express = require("express");
+// let mySql = require("mysql");
 
-let con = mySql.createConnection({
-  host: "localhost",
-  user: "kate",
-  password: "12345"
-});
+// const db = mySql.createConnection({
+//   host: "localhost",
+//   user: "root",
+//   password: "",
+// });
 
-con.connect(function(err) {
-  if (err) throw err;
-  console.log("Connected!");
-});
+// db.connect((err) => {
+//   if (err) {
+//     throw err;
+//   }
+//   console.log(Connected);
+// });
+
+// const app = express();
+
+// app.get("/createdb", (req, res) => {
+//   let sql = "CREATE DATABASE Users";
+//   db.query(sql, (err) => {
+//     if (err) {
+//       throw err;
+//     }
+//     res.send("DB created");
+//   });
+// });
 
 let genres = [];
 let genreList = [];
@@ -110,7 +125,7 @@ async function listOfMoviesByGenres(ctx, messageText) {
           reply_markup: returnToMenuKeyboard,
         }
       );
-      botStatus = "genre_choice";
+      botStatus = "film_choice";
       return movieList;
     }
   }
@@ -121,6 +136,7 @@ async function listOfMoviesByGenres(ctx, messageText) {
 }
 
 async function getFilmByNumber(ctx, messageText, filmList) {
+  console.log(messageText, filmList);
   const filmNumber = parseInt(messageText);
   if (!isNaN(filmNumber)) {
     if (filmNumber >= 0 && filmNumber <= filmList.length) {
@@ -188,18 +204,9 @@ async function searchByTitle(ctx) {
 
 async function getMovieByTitle(ctx) {
   const movieTitle = ctx.message.text;
-
-  const response = await fetch("https://uaserials.pro/", {
-    method: "POST",
-    body: JSON.stringify({
-      do: "search",
-      subaction: "search",
-      story: movieTitle,
-    }),
-    headers: {
-      "Content-type": "application/json; charset=utf-8",
-    },
-  });
+  const response = await fetch(
+    `https://uaserials.pro/index.php?do=search&subaction=search&story=${movieTitle}`
+  );
 
   const body = await response.text();
 
@@ -210,27 +217,36 @@ async function getMovieByTitle(ctx) {
     dom.window.document.querySelectorAll(".short-item")
   );
 
-  const movieInfo = movieElements.map((element) => {
-    const description = element.querySelector(".ftext").textContent;
-    //const feedbacks = element.querySelector(".th-title-oname").textContent;
+  const moviesInfo = movieElements.map((element) => {
+    const title = element.querySelector(".th-title").textContent;
     const filmUrl = element.querySelector(".short-img").href;
-    const picture = element.querySelector(".fimg img").src;
-    return { description, picture, filmUrl };
+    return { title, filmUrl };
   });
 
-  console.log(movieInfo);
+  if (moviesInfo.length) {
+    if (moviesInfo.length === 1) {
+      getFilmByNumber(ctx, 0, moviesInfo);
+    } else {
+      const moviesText = moviesInfo
+        .map((movie, index) => `${index + 1}. ${movie.title}`)
+        .join("\n");
 
-  if (movieInfo) {
-    await ctx.reply(movieInfo.picture, {
-      caption: `${movieTitle}\n\nОпис: ${movieInfo.description}\n\n${movieInfo.filmUrl}`,
-    });
+      await ctx.reply(
+        `Знайдено ${moviesInfo.length} фільмів:\n${moviesText}\n\n Введіть номер фільму зі списку.`,
+        {
+          reply_markup: returnToMenuKeyboard,
+        }
+      );
+      botStatus = "film_choice";
+      return moviesInfo;
+    }
   } else {
     await ctx.reply(
       "Фільм не знайдено. Спробуйте іншу назву або перейдіть у головне меню."
     );
   }
 
-  await sendMainMenu(ctx);
+  return null;
 }
 
 async function showWatchedList(ctx) {
@@ -275,9 +291,9 @@ bot.on("message", async (ctx) => {
   } else if (botStatus === "genre") {
     filmList = await listOfMoviesByGenres(ctx, messageText);
   } else if (botStatus === "title") {
-    getMovieByTitle(ctx);
+    filmList = await getMovieByTitle(ctx);
   } else if (botStatus === "watched") {
-  } else if (botStatus === "genre_choice") {
+  } else if (botStatus === "film_choice") {
     getFilmByNumber(ctx, messageText, filmList);
   }
 });
