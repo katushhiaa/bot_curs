@@ -142,7 +142,7 @@ async function getFilmByNumber(ctx, messageText, filmList) {
   console.log(messageText, filmList);
   const filmNumber = parseInt(messageText);
   if (!isNaN(filmNumber)) {
-    if (filmNumber >= 0 && filmNumber <= filmList.length) {
+    if (filmNumber >= 1 && filmNumber <= filmList.length) {
       const movieURL = filmList[filmNumber - 1].filmUrl;
       const response = await fetch(movieURL);
       const body = await response.text();
@@ -223,7 +223,7 @@ async function getMovieByTitle(ctx) {
   const moviesInfo = movieElements.map((element) => {
     const title = element.querySelector(".th-title").textContent;
     const filmUrl = element.querySelector(".short-img").href;
-    return { title, filmUrl };
+    return { title, filmUrl, filmYear };
   });
 
   if (moviesInfo.length) {
