@@ -10,7 +10,7 @@ const { MongoClient } = require("mongodb");
 
 const url = "mongodb://localhost:27017";
 const client = new MongoClient(url);
-const dbName = "chatBot";
+const dbName = "ChatBot";
 
 async function dbConnect() {
   // Use connect method to connect to the server
@@ -26,8 +26,8 @@ async function dbConnect() {
   // ]);
   // console.log("Inserted films =>", insertResult);
 
-  const filteredFilms = await collection.find({ userId: 1 }).toArray();
-  console.log("Found films filtered by userId =>", filteredFilms);
+  // const filteredFilms = await collection.find({ userId: 1 }).toArray();
+  // console.log("Found films filtered by userId =>", filteredFilms);
 
   client.close();
 
@@ -49,8 +49,8 @@ let text = "";
 
 const mainMenuKeyboard = {
   keyboard: [
-    [{ text: "Пошук по жанру" }],
     [{ text: "Пошук по назві" }],
+    [{ text: "Пошук по жанру" }],
     [{ text: "Список переглянутих фільмів" }],
   ],
   resize_keyboard: true,
@@ -64,12 +64,6 @@ const returnToMenuKeyboard = {
 async function sendMainMenu(ctx) {
   await ctx.reply("Обери дію:", { reply_markup: mainMenuKeyboard });
   botStatus === "main_menu";
-}
-
-async function genreSearch(ctx) {
-  await ctx.reply(`Вибери жанр, щоб знайти фільми. \n ${numberedGenres}`, {
-    reply_markup: returnToMenuKeyboard,
-  });
 }
 
 async function getGenres(ctx) {
@@ -165,14 +159,20 @@ async function getFilmByNumber(ctx, messageText, filmList) {
 
       movieFeedbacks.sort(compareFeedbacks);
 
-      const feedBacksInfo = movieFeedbacks
-        .slice(0, 3)
-        .map((element) => {
-          const guestName = element.querySelector(".comm-author").textContent;
-          const feedbackText = element.querySelector(".comm-two").textContent;
-          return `${guestName}: ${feedbackText}`;
-        })
-        .join("\n");
+      const feedbacks = movieFeedbacks.slice(0, 3);
+      let feedBacksInfo = "";
+
+      if (feedbacks.length > 0) {
+        feedBacksInfo = feedbacks
+          .map((element) => {
+            const guestName = element.querySelector(".comm-author").textContent;
+            const feedbackText = element.querySelector(".comm-two").textContent;
+            return `${guestName}: ${feedbackText}`;
+          })
+          .join("\n");
+      } else {
+        feedBacksInfo = "Немає відгуків";
+      }
 
       const movieYear =
         dom.window.document.querySelector("a[href*='/year/']").textContent;
@@ -223,7 +223,7 @@ async function getMovieByTitle(ctx) {
   const moviesInfo = movieElements.map((element) => {
     const title = element.querySelector(".th-title").textContent;
     const filmUrl = element.querySelector(".short-img").href;
-    return { title, filmUrl, filmYear };
+    return { title, filmUrl };
   });
 
   if (moviesInfo.length) {
@@ -256,10 +256,6 @@ async function showWatchedList(ctx) {
   await ctx.reply(`Твій список переглянутих фільмів. \n ${watchedList}`, {
     reply_markup: returnToMenuKeyboard,
   });
-}
-
-async function returnToGenreMenu(ctx) {
-  await genreSearch(ctx);
 }
 
 bot.command("start", async (ctx) => {
@@ -303,8 +299,8 @@ bot.on("message", async (ctx) => {
 });
 
 async function init() {
-  // await dbConnect();
   bot.start();
+  await dbConnect();
 }
 
 init();
