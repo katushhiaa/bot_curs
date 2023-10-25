@@ -12,33 +12,67 @@ const url = "mongodb://localhost:27017";
 const client = new MongoClient(url);
 const dbName = "ChatBot";
 
-async function dbConnect() {
-  // Use connect method to connect to the server
+async function dbConnect(ctx) {
   await client.connect();
-  console.log("Connected successfully to server");
   const db = client.db(dbName);
-  const collection = db.collection("films");
-
-  // const insertResult = await collection.insertMany([
-  //   { userId: 1, filmUrl: "https:\\?????" },
-  //   { userId: 1, filmUrl: "https:\\?????" },
-  //   { userId: 3, filmUrl: "https:\\!!!!!!" },
-  // ]);
-  // console.log("Inserted films =>", insertResult);
-
-  // const filteredFilms = await collection.find({ userId: 1 }).toArray();
-  // console.log("Found films filtered by userId =>", filteredFilms);
-
-  client.close();
-
-  // the following code examples can be pasted here...
-
-  return "done.";
+  return db;
 }
+module.exports = dbConnect;
+
+const insertDataInUsers = async (ctx) => {
+  const db = await dbConnect();
+  const collectionUsers = db.collection("users");
+  const userId = ctx.from.id;
+  const username = ctx.from.username;
+  const first_name = ctx.from.first_name;
+  const insertInUsers = await collectionUsers.insertOne({
+    user_id: userId,
+    username: username,
+    first_name: first_name,
+  });
+  if (insertInUsers) {
+    console.log("Everything good");
+  } else {
+    console.log("Everuthing bad");
+  }
+};
+
+const insertDataInFilms = async (ctx, movieTitle, movieURL, formattedDate, ratingImdb) => {
+  const db = await dbConnect();
+  const collectionFilms = db.collection("films");
+  const userId = ctx.from.id;
+  const insertInFilms = await collectionFilms.insertOne({
+    user_id: userId,
+    movie_title: movieTitle,
+    ratingImdb: ratingImdb,
+    movie_url: movieURL,
+    timeStamp: formattedDate,
+  });
+  if (insertInFilms) {
+    console.log("Everything good");
+  } else {
+    console.log("Everuthing bad");
+  }
+};
 
 let genres = [];
 let genreList = [];
 let filmList = [];
+const currentDate = new Date();
+const options = {
+  timeZone: "Europe/Kiev", // Set the time zone to Ukraine
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hour12: false, // Use 24-hour format
+};
+
+const formatter = new Intl.DateTimeFormat("en-US", options);
+const formattedDate = formatter.format(currentDate);
+
 const watchedFilms = ["Horro1", "Comedy2", "Romance3", "Drama1"];
 const watchedList = watchedFilms
   .map((genre, index) => `${index + 1}. ${genre}`)
@@ -144,8 +178,13 @@ async function getFilmByNumber(ctx, messageText, filmList) {
       const { JSDOM } = jsdom;
       const dom = new JSDOM(body);
 
-      const movieTitle =
-        dom.window.document.querySelector(".short-title").textContent;
+      const movieTitleElement =
+        dom.window.document.querySelector(".short-title");
+      const movieTitle = movieTitleElement.textContent.trim();
+      const ratingElement = dom.window.document.querySelector(
+        "a.short-rate-imdb span"
+      );
+      const ratingImdb = ratingElement.textContent;
       const moviePicture = dom.window.document.querySelector(".fimg img").src;
       const movieDescription =
         dom.window.document.querySelector(".ftext").textContent;
@@ -181,9 +220,9 @@ async function getFilmByNumber(ctx, messageText, filmList) {
         text: `${movieTitle}(${movieYear})`,
         url: movieURL,
       };
-
+      await insertDataInFilms(ctx, movieTitle, movieURL, formattedDate, ratingImdb);
       await ctx.reply(
-        `<b>${movieTitle}(${movieYear})</b>\n<a href="${moviePicture}">&#8205;</a>\n<b>Опис:</b>\n${movieDescription}\n\n<b>Відгуки:</b>\n\n${feedBacksInfo}`,
+        `<b>${movieTitle}(${movieYear})</b>\n\n<b>IMDB:</b> ${ratingImdb}\n <a href="${moviePicture}">&#8205;</a>\n<b>Опис:</b>\n${movieDescription}\n\n<b>Відгуки:</b>\n\n${feedBacksInfo}`,
         {
           parse_mode: "HTML",
           reply_markup: {
@@ -262,6 +301,8 @@ bot.command("start", async (ctx) => {
   const welcomeMessage =
     "Привіт. Дякую, що вирішив скористатись нашим ботом. Обери дію:";
   await ctx.reply(welcomeMessage, { reply_markup: mainMenuKeyboard });
+  await insertDataInUsers(ctx);
+  console.log(ctx.chat.id);
 });
 
 let botStatus = "main_menu";
@@ -300,7 +341,6 @@ bot.on("message", async (ctx) => {
 
 async function init() {
   bot.start();
-  await dbConnect();
 }
 
 init();
