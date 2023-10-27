@@ -23,35 +23,65 @@ const insertDataInUsers = async (ctx) => {
   const db = await dbConnect();
   const collectionUsers = db.collection("users");
   const userId = ctx.from.id;
-  const username = ctx.from.username;
-  const first_name = ctx.from.first_name;
-  const insertInUsers = await collectionUsers.insertOne({
-    user_id: userId,
-    username: username,
-    first_name: first_name,
-  });
-  if (insertInUsers) {
-    console.log("Everything good");
+  const existingUser = await collectionUsers.findOne({ user_id: userId });
+
+  if (existingUser) {
+    console.log("Користувач вже існує в базі даних.");
   } else {
-    console.log("Everuthing bad");
+    const username = ctx.from.username;
+    const first_name = ctx.from.first_name;
+    const insertInUsers = await collectionUsers.insertOne({
+      user_id: userId,
+      username: username,
+      first_name: first_name,
+    });
+
+    if (insertInUsers) {
+      console.log("Користувача додано до бази даних.");
+    } else {
+      console.log("Помилка під час додавання користувача до бази даних.");
+    }
   }
 };
 
-const insertDataInFilms = async (ctx, movieTitle, movieURL, formattedDate, ratingImdb) => {
+const insertDataInFilms = async (
+  ctx,
+  movieTitle,
+  movieURL,
+  formattedDate,
+  ratingImdb
+) => {
   const db = await dbConnect();
   const collectionFilms = db.collection("films");
   const userId = ctx.from.id;
-  const insertInFilms = await collectionFilms.insertOne({
-    user_id: userId,
-    movie_title: movieTitle,
-    ratingImdb: ratingImdb,
-    movie_url: movieURL,
-    timeStamp: formattedDate,
-  });
-  if (insertInFilms) {
-    console.log("Everything good");
+
+  const existingFilm = await collectionFilms.findOne({ movie_url: movieURL });
+
+  if (existingFilm) {
+    const updateResult = await collectionFilms.updateOne(
+      { _id: existingFilm._id },
+      { $set: { timeStamp: formattedDate } }
+    );
+
+    if (updateResult) {
+      console.log("Дата оновлена для існуючого фільму");
+    } else {
+      console.log("Не вдалося оновити дату");
+    }
   } else {
-    console.log("Everuthing bad");
+    const insertInFilms = await collectionFilms.insertOne({
+      user_id: userId,
+      movie_title: movieTitle,
+      ratingImdb: ratingImdb,
+      movie_url: movieURL,
+      timeStamp: formattedDate,
+    });
+
+    if (insertInFilms) {
+      console.log("Додано новий фільм");
+    } else {
+      console.log("Помилка при додаванні нового фільму");
+    }
   }
 };
 
@@ -60,14 +90,14 @@ let genreList = [];
 let filmList = [];
 const currentDate = new Date();
 const options = {
-  timeZone: "Europe/Kiev", // Set the time zone to Ukraine
+  timeZone: "Europe/Kiev",
   year: "numeric",
   month: "2-digit",
   day: "2-digit",
   hour: "2-digit",
   minute: "2-digit",
   second: "2-digit",
-  hour12: false, // Use 24-hour format
+  hour12: false,
 };
 
 const formatter = new Intl.DateTimeFormat("en-US", options);
@@ -220,7 +250,13 @@ async function getFilmByNumber(ctx, messageText, filmList) {
         text: `${movieTitle}(${movieYear})`,
         url: movieURL,
       };
-      await insertDataInFilms(ctx, movieTitle, movieURL, formattedDate, ratingImdb);
+      await insertDataInFilms(
+        ctx,
+        movieTitle,
+        movieURL,
+        formattedDate,
+        ratingImdb
+      );
       await ctx.reply(
         `<b>${movieTitle}(${movieYear})</b>\n\n<b>IMDB:</b> ${ratingImdb}\n <a href="${moviePicture}">&#8205;</a>\n<b>Опис:</b>\n${movieDescription}\n\n<b>Відгуки:</b>\n\n${feedBacksInfo}`,
         {
