@@ -85,6 +85,27 @@ const insertDataInFilms = async (
   }
 };
 
+const getWatchedMoviesForUser = async (userId) => {
+  const db = await dbConnect();
+  const collectionFilms = db.collection("films");
+  const collectionUsers = db.collection("users");
+  const user = await collectionUsers.findOne({ user_id: userId });
+  console.log(userId);
+  //console.log(user);
+
+  if (user) {
+    const movies = await collectionFilms
+      .find({ user_id: user.user_id })
+      .sort({ timeStamp: 1 })
+      .toArray();
+
+    console.log(movies);
+    return movies;
+  }else{
+    console.log("Not found")
+  }
+};
+
 let genres = [];
 let genreList = [];
 let filmList = [];
@@ -102,11 +123,6 @@ const options = {
 
 const formatter = new Intl.DateTimeFormat("en-US", options);
 const formattedDate = formatter.format(currentDate);
-
-const watchedFilms = ["Horro1", "Comedy2", "Romance3", "Drama1"];
-const watchedList = watchedFilms
-  .map((genre, index) => `${index + 1}. ${genre}`)
-  .join("\n");
 
 let id = 0;
 let text = "";
@@ -327,10 +343,35 @@ async function getMovieByTitle(ctx) {
   return null;
 }
 
-async function showWatchedList(ctx) {
-  await ctx.reply(`Твій список переглянутих фільмів. \n ${watchedList}`, {
-    reply_markup: returnToMenuKeyboard,
-  });
+async function showWatchedList(ctx, userId) {
+  const movies = await getWatchedMoviesForUser(userId);
+
+  console.log("Список переглянутих фільмів користувача:");
+  const watchedList = [];
+
+  if (movies && movies.length === 0) {
+    await ctx.reply("Твій список переглянутих фільмів порожній.", {
+      reply_markup: returnToMenuKeyboard,
+    });
+  } else {
+    movies.forEach((movie) => {
+      console.log(
+        `${movie.movie_title} (${movie.ratingImdb}) - ${movie.timeStamp}`
+      );
+      watchedList.push(
+        `${movie.movie_title} (${movie.ratingImdb}) - ${movie.timeStamp}`
+      );
+    });
+
+    console.log(watchedList);
+
+    await ctx.reply(
+      `Твій список переглянутих фільмів. \n ${watchedList.join("\n")}`,
+      {
+        reply_markup: returnToMenuKeyboard,
+      }
+    );
+  }
 }
 
 bot.command("start", async (ctx) => {
@@ -370,6 +411,7 @@ bot.on("message", async (ctx) => {
   } else if (botStatus === "title") {
     filmList = await getMovieByTitle(ctx);
   } else if (botStatus === "watched") {
+    showWatchedList(ctx, userId);
   } else if (botStatus === "film_choice") {
     getFilmByNumber(ctx, messageText, filmList);
   }
