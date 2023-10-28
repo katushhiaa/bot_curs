@@ -88,21 +88,17 @@ const insertDataInFilms = async (
 const getWatchedMoviesForUser = async (userId) => {
   const db = await dbConnect();
   const collectionFilms = db.collection("films");
-  const collectionUsers = db.collection("users");
-  const user = await collectionUsers.findOne({ user_id: userId });
-  console.log(userId);
-  //console.log(user);
 
-  if (user) {
+  if (userId) {
     const movies = await collectionFilms
-      .find({ user_id: user.user_id })
+      .find({ user_id: userId })
       .sort({ timeStamp: 1 })
       .toArray();
 
     console.log(movies);
     return movies;
-  }else{
-    console.log("Not found")
+  } else {
+    console.log("Not found");
   }
 };
 
@@ -354,19 +350,21 @@ async function showWatchedList(ctx, userId) {
       reply_markup: returnToMenuKeyboard,
     });
   } else {
-    movies.forEach((movie) => {
+    movies.forEach((movie, index) => {
       console.log(
         `${movie.movie_title} (${movie.ratingImdb}) - ${movie.timeStamp}`
       );
       watchedList.push(
-        `${movie.movie_title} (${movie.ratingImdb}) - ${movie.timeStamp}`
+        `${index + 1}. ${movie.movie_title} (${movie.ratingImdb}) - ${
+          movie.timeStamp
+        }`
       );
     });
 
     console.log(watchedList);
 
     await ctx.reply(
-      `Твій список переглянутих фільмів. \n ${watchedList.join("\n")}`,
+      `Твій список переглянутих фільмів.\n${watchedList.join("\n")}`,
       {
         reply_markup: returnToMenuKeyboard,
       }
@@ -404,14 +402,13 @@ bot.on("message", async (ctx) => {
       searchByTitle(ctx);
     } else if (messageText === "Список переглянутих фільмів") {
       botStatus = "watched";
-      showWatchedList(ctx);
+      const userId = ctx.update.message.from.id;
+      showWatchedList(ctx, userId);
     }
   } else if (botStatus === "genre") {
     filmList = await listOfMoviesByGenres(ctx, messageText);
   } else if (botStatus === "title") {
     filmList = await getMovieByTitle(ctx);
-  } else if (botStatus === "watched") {
-    showWatchedList(ctx, userId);
   } else if (botStatus === "film_choice") {
     getFilmByNumber(ctx, messageText, filmList);
   }
