@@ -44,13 +44,8 @@ const insertDataInUsers = async (ctx) => {
   }
 };
 
-const insertDataInFilms = async (
-  ctx,
-  movieTitle,
-  movieURL,
-  formattedDate,
-  ratingImdb
-) => {
+const insertDataInFilms = async (ctx, movieTitle, movieURL, ratingImdb) => {
+  const time = new Date().getTime();
   const db = await dbConnect();
   const collectionFilms = db.collection("films");
   const userId = ctx.from.id;
@@ -60,7 +55,7 @@ const insertDataInFilms = async (
   if (existingFilm) {
     const updateResult = await collectionFilms.updateOne(
       { _id: existingFilm._id },
-      { $set: { timeStamp: formattedDate } }
+      { $set: { timeStamp: time } }
     );
 
     if (updateResult) {
@@ -74,7 +69,7 @@ const insertDataInFilms = async (
       movie_title: movieTitle,
       ratingImdb: ratingImdb,
       movie_url: movieURL,
-      timeStamp: formattedDate,
+      timeStamp: time,
     });
 
     if (insertInFilms) {
@@ -262,13 +257,7 @@ async function getFilmByNumber(ctx, messageText, filmList) {
         text: `${movieTitle}(${movieYear})`,
         url: movieURL,
       };
-      await insertDataInFilms(
-        ctx,
-        movieTitle,
-        movieURL,
-        formattedDate,
-        ratingImdb
-      );
+      await insertDataInFilms(ctx, movieTitle, movieURL, ratingImdb);
       await ctx.reply(
         `<b>${movieTitle}(${movieYear})</b>\n\n<b>IMDB:</b> ${ratingImdb}\n <a href="${moviePicture}">&#8205;</a>\n<b>Опис:</b>\n${movieDescription}\n\n<b>Відгуки:</b>\n\n${feedBacksInfo}`,
         {
@@ -352,10 +341,10 @@ async function showWatchedList(ctx, userId) {
   } else {
     movies.forEach((movie, index) => {
       console.log(
-        `${movie.movie_title} (${movie.ratingImdb}) - ${movie.timeStamp}`
+        `${movie.movie_title} (${movie.ratingImdb})` // - ${movie.timeStamp}
       );
       watchedList.push(
-        `${index + 1}. ${movie.movie_title} (${movie.ratingImdb}) - ${
+        `${index + 1}. ${movie.movie_title} (${movie.ratingImdb}) ${
           movie.timeStamp
         }`
       );
