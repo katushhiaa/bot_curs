@@ -2,8 +2,8 @@ const jsdom = require("jsdom");
 const fetch = (...args) =>
   import("node-fetch").then(({ default: fetch }) => fetch(...args));
 
-const { Bot, Composer } = require("grammy");
-const bot = new Bot("6621400116:AAElnt19ztBbaa0aNC9NHUkjOWVhIEjfn6E");
+const { Bot } = require("grammy");
+const botID = "6621400116:AAElnt19ztBbaa0aNC9NHUkjOWVhIEjfn6E";
 
 let express = require("express");
 const { MongoClient } = require("mongodb");
@@ -12,14 +12,33 @@ const url = "mongodb://localhost:27017";
 const client = new MongoClient(url);
 const dbName = "ChatBot";
 
-async function dbConnect(ctx) {
+async function dbConnect() {
   await client.connect();
   const db = client.db(dbName);
   return db;
 }
 module.exports = dbConnect;
 
-const insertDataInUsers = async (ctx) => {
+const siteUrl = "https://uaserials.pro";
+let genres = [];
+let genreList = [];
+let filmList = [];
+
+const mainMenuKeyboard = {
+  keyboard: [
+    [{ text: "Пошук по назві" }],
+    [{ text: "Пошук по жанру" }],
+    [{ text: "Список переглянутих фільмів" }],
+  ],
+  resize_keyboard: true,
+};
+
+const returnToMenuKeyboard = {
+  keyboard: [[{ text: "Повернутись у головне меню" }]],
+  resize_keyboard: true,
+};
+
+async function insertDataInUsers(ctx) {
   const db = await dbConnect();
   const collectionUsers = db.collection("users");
   const userId = ctx.from.id;
@@ -42,14 +61,13 @@ const insertDataInUsers = async (ctx) => {
       console.log("Помилка під час додавання користувача до бази даних.");
     }
   }
-};
+}
 
-const insertDataInFilms = async (ctx, movieTitle, movieURL, ratingImdb) => {
+async function insertDataInFilms(ctx, movieTitle, movieURL, ratingImdb) {
   const time = new Date().getTime();
   const db = await dbConnect();
   const collectionFilms = db.collection("films");
   const userId = ctx.from.id;
-
   const existingFilm = await collectionFilms.findOne({ movie_url: movieURL });
 
   if (existingFilm) {
@@ -71,16 +89,15 @@ const insertDataInFilms = async (ctx, movieTitle, movieURL, ratingImdb) => {
       movie_url: movieURL,
       timeStamp: time,
     });
-
     if (insertInFilms) {
       console.log("Додано новий фільм");
     } else {
       console.log("Помилка при додаванні нового фільму");
     }
   }
-};
+}
 
-const getWatchedMoviesForUser = async (userId) => {
+async function getWatchedMoviesForUser(userId) {
   const db = await dbConnect();
   const collectionFilms = db.collection("films");
 
@@ -89,48 +106,11 @@ const getWatchedMoviesForUser = async (userId) => {
       .find({ user_id: userId })
       .sort({ timeStamp: 1 })
       .toArray();
-
-    console.log(movies);
     return movies;
   } else {
     console.log("Not found");
   }
-};
-
-let genres = [];
-let genreList = [];
-let filmList = [];
-const currentDate = new Date();
-const options = {
-  timeZone: "Europe/Kiev",
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-  hour: "2-digit",
-  minute: "2-digit",
-  second: "2-digit",
-  hour12: false,
-};
-
-const formatter = new Intl.DateTimeFormat("en-US", options);
-const formattedDate = formatter.format(currentDate);
-
-let id = 0;
-let text = "";
-
-const mainMenuKeyboard = {
-  keyboard: [
-    [{ text: "Пошук по назві" }],
-    [{ text: "Пошук по жанру" }],
-    [{ text: "Список переглянутих фільмів" }],
-  ],
-  resize_keyboard: true,
-};
-
-const returnToMenuKeyboard = {
-  keyboard: [[{ text: "Повернутись у головне меню" }]],
-  resize_keyboard: true,
-};
+}
 
 async function sendMainMenu(ctx) {
   await ctx.reply("Обери дію:", { reply_markup: mainMenuKeyboard });
@@ -138,11 +118,8 @@ async function sendMainMenu(ctx) {
 }
 
 async function getGenres(ctx) {
-  const response = await fetch("https://uaserials.pro/films/");
-  const body = await response.text();
+  const dom = await getDOM(`${siteUrl}/films/`);
 
-  const { JSDOM } = jsdom;
-  const dom = new JSDOM(body);
   genreList = Array.from(
     dom.window.document.querySelectorAll('[data-placeholder="Жанр"] option')
   ).map((item) => {
@@ -158,19 +135,21 @@ async function getGenres(ctx) {
   });
 }
 
+async function getDOM(url) {
+  const response = await fetch(url);
+  const body = await response.text();
+  const { JSDOM } = jsdom;
+  return new JSDOM(body);
+}
+
 async function listOfMoviesByGenres(ctx, messageText) {
   const genreNumber = parseInt(messageText);
   if (!isNaN(genreNumber)) {
     if (genreNumber >= 1 && genreNumber <= genreList.length) {
       const selectedGenre = genreList[genreNumber];
-      const response = await fetch(
-        `https://uaserials.pro/films/f/year=1920;2023/imdb=7;10/cat=${selectedGenre.id}`
+      const dom = await getDOM(
+        `${siteUrl}/films/f/year=1920;2023/imdb=7;10/cat=${selectedGenre.id}`
       );
-
-      const body = await response.text();
-
-      const { JSDOM } = jsdom;
-      const dom = new JSDOM(body);
 
       const movieElements = Array.from(
         dom.window.document.querySelectorAll(".short-item")
@@ -204,16 +183,11 @@ async function listOfMoviesByGenres(ctx, messageText) {
 }
 
 async function getFilmByNumber(ctx, messageText, filmList) {
-  console.log(messageText, filmList);
   const filmNumber = parseInt(messageText);
   if (!isNaN(filmNumber)) {
     if (filmNumber >= 1 && filmNumber <= filmList.length) {
       const movieURL = filmList[filmNumber - 1].filmUrl;
-      const response = await fetch(movieURL);
-      const body = await response.text();
-
-      const { JSDOM } = jsdom;
-      const dom = new JSDOM(body);
+      const dom = await getDOM(movieURL);
 
       const movieTitleElement =
         dom.window.document.querySelector(".short-title");
@@ -229,16 +203,15 @@ async function getFilmByNumber(ctx, messageText, filmList) {
         dom.window.document.querySelectorAll(".comments-tree-item")
       );
 
-      function compareFeedbacks(a, b) {
-        return a.textContent.length - b.textContent.length;
-      }
-
-      movieFeedbacks.sort(compareFeedbacks);
-
-      const feedbacks = movieFeedbacks.slice(0, 3);
       let feedBacksInfo = "";
 
-      if (feedbacks.length > 0) {
+      if (movieFeedbacks.length > 0) {
+        movieFeedbacks.sort(
+          (a, b) => a.textContent.length - b.textContent.length
+        );
+
+        const feedbacks = movieFeedbacks.slice(0, 3);
+
         feedBacksInfo = feedbacks
           .map((element) => {
             const guestName = element.querySelector(".comm-author").textContent;
@@ -252,7 +225,6 @@ async function getFilmByNumber(ctx, messageText, filmList) {
 
       const movieYear =
         dom.window.document.querySelector("a[href*='/year/']").textContent;
-
       const movieUrlButton = {
         text: `${movieTitle}(${movieYear})`,
         url: movieURL,
@@ -283,19 +255,12 @@ async function searchByTitle(ctx) {
 
 async function getMovieByTitle(ctx) {
   const movieTitle = ctx.message.text;
-  const response = await fetch(
-    `https://uaserials.pro/index.php?do=search&subaction=search&story=${movieTitle}`
+  const dom = await getDOM(
+    `${siteUrl}/index.php?do=search&subaction=search&story=${movieTitle}`
   );
-
-  const body = await response.text();
-
-  const { JSDOM } = jsdom;
-  const dom = new JSDOM(body);
-
   const movieElements = Array.from(
     dom.window.document.querySelectorAll(".short-item")
   );
-
   const moviesInfo = movieElements.map((element) => {
     const title = element.querySelector(".th-title").textContent;
     const filmUrl = element.querySelector(".short-img").href;
@@ -324,33 +289,22 @@ async function getMovieByTitle(ctx) {
       "Фільм не знайдено. Спробуйте іншу назву або перейдіть у головне меню."
     );
   }
-
   return null;
 }
 
 async function showWatchedList(ctx, userId) {
   const movies = await getWatchedMoviesForUser(userId);
-
-  console.log("Список переглянутих фільмів користувача:");
   const watchedList = [];
-
   if (movies && movies.length === 0) {
     await ctx.reply("Твій список переглянутих фільмів порожній.", {
       reply_markup: returnToMenuKeyboard,
     });
   } else {
     movies.forEach((movie, index) => {
-      console.log(
-        `${movie.movie_title} (${movie.ratingImdb})` // - ${movie.timeStamp}
-      );
       watchedList.push(
-        `${index + 1}. ${movie.movie_title} (${movie.ratingImdb}) ${
-          movie.timeStamp
-        }`
+        `${index + 1}. ${movie.movie_title} (${movie.ratingImdb})`
       );
     });
-
-    console.log(watchedList);
 
     await ctx.reply(
       `Твій список переглянутих фільмів.\n${watchedList.join("\n")}`,
@@ -361,50 +315,45 @@ async function showWatchedList(ctx, userId) {
   }
 }
 
-bot.command("start", async (ctx) => {
-  const welcomeMessage =
-    "Привіт. Дякую, що вирішив скористатись нашим ботом. Обери дію:";
-  await ctx.reply(welcomeMessage, { reply_markup: mainMenuKeyboard });
-  await insertDataInUsers(ctx);
-  console.log(ctx.chat.id);
-});
-
 let botStatus = "main_menu";
 
-bot.on("message", async (ctx) => {
-  console.log("ctx", ctx.update.message.from);
-  const messageText = ctx.message.text;
-  if (messageText === "Повернутись у головне меню") {
-    genreNumber = 0;
-    sendMainMenu(ctx);
-    botStatus = "main_menu";
-  }
+async function initBot() {
+  const bot = new Bot(botID);
+  bot.command("start", async (ctx) => {
+    const welcomeMessage =
+      "Привіт. Дякую, що вирішив скористатись нашим ботом. Обери дію:";
+    await ctx.reply(welcomeMessage, { reply_markup: mainMenuKeyboard });
+    await insertDataInUsers(ctx);
+  });
 
-  console.log(botStatus);
-
-  if (botStatus === "main_menu") {
-    if (messageText === "Пошук по жанру") {
-      botStatus = "genre";
-      getGenres(ctx);
-    } else if (messageText === "Пошук по назві") {
-      botStatus = "title";
-      searchByTitle(ctx);
-    } else if (messageText === "Список переглянутих фільмів") {
-      botStatus = "watched";
-      const userId = ctx.update.message.from.id;
-      showWatchedList(ctx, userId);
+  bot.on("message", async (ctx) => {
+    const messageText = ctx.message.text;
+    if (messageText === "Повернутись у головне меню") {
+      genreNumber = 0;
+      sendMainMenu(ctx);
+      botStatus = "main_menu";
     }
-  } else if (botStatus === "genre") {
-    filmList = await listOfMoviesByGenres(ctx, messageText);
-  } else if (botStatus === "title") {
-    filmList = await getMovieByTitle(ctx);
-  } else if (botStatus === "film_choice") {
-    getFilmByNumber(ctx, messageText, filmList);
-  }
-});
-
-async function init() {
+    if (botStatus === "main_menu") {
+      if (messageText === "Пошук по жанру") {
+        botStatus = "genre";
+        getGenres(ctx);
+      } else if (messageText === "Пошук по назві") {
+        botStatus = "title";
+        searchByTitle(ctx);
+      } else if (messageText === "Список переглянутих фільмів") {
+        botStatus = "watched";
+        const userId = ctx.update.message.from.id;
+        showWatchedList(ctx, userId);
+      }
+    } else if (botStatus === "genre") {
+      filmList = await listOfMoviesByGenres(ctx, messageText);
+    } else if (botStatus === "title") {
+      filmList = await getMovieByTitle(ctx);
+    } else if (botStatus === "film_choice") {
+      getFilmByNumber(ctx, messageText, filmList);
+    }
+  });
   bot.start();
 }
 
-init();
+initBot();
