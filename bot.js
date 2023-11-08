@@ -269,7 +269,6 @@ async function getMovieByTitle(ctx) {
     ).textContent;
     return { title, filmUrl, filmType };
   });
-
   if (moviesInfo.length > 0) {
     if (moviesInfo.length === 1) {
       getFilmByNumber(ctx, 1, moviesInfo);
