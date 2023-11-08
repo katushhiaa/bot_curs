@@ -264,15 +264,20 @@ async function getMovieByTitle(ctx) {
   const moviesInfo = movieElements.map((element) => {
     const title = element.querySelector(".th-title").textContent;
     const filmUrl = element.querySelector(".short-img").href;
-    return { title, filmUrl };
+    const filmType = element.querySelector(
+      ".short-label.short-label-level-1 span"
+    ).textContent;
+    return { title, filmUrl, filmType };
   });
 
-  if (moviesInfo.length) {
+  if (moviesInfo.length > 0) {
     if (moviesInfo.length === 1) {
-      getFilmByNumber(ctx, 0, moviesInfo);
+      getFilmByNumber(ctx, 1, moviesInfo);
     } else {
       const moviesText = moviesInfo
-        .map((movie, index) => `${index + 1}. ${movie.title}`)
+        .map(
+          (movie, index) => `${index + 1}. ${movie.title} - (${movie.filmType})`
+        )
         .join("\n");
 
       await ctx.reply(
